@@ -1,0 +1,79 @@
+module time_display( 
+    input clk,                // Clock input (assume 1 Hz for simplicity) 
+    input reset,              // Reset signal 
+    input start_timer,        // Start signal for the timer 
+    input extend_timer,       // Extend signal for the timer 
+    input timer_select,       // 0: 1-sec timer, 1: 2-sec timer 
+    output reg [5:0] seconds, // Seconds (0-59) 
+    output reg [5:0] minutes, // Minutes (0-59) 
+    output reg [4:0] hours,   // Hours (0-23) 
+    output reg beep,          // Beep signal for the last 5 seconds 
+    output reg [7:0] extend_count // Counter for timer extensions 
+); 
+ 
+    reg [1:0] timer_duration; // Timer duration (1 or 2 seconds) 
+    reg [5:0] timer_counter;  // Countdown timer 
+    reg timer_active;         // Timer active flag 
+ 
+    // Time Increment Logic (Clock time) 
+    always @(posedge clk or posedge reset) begin 
+        if (reset) begin 
+            seconds <= 0; 
+            minutes <= 0; 
+            hours <= 0; 
+        end else begin 
+            seconds <= seconds + 1; 
+            if (seconds == 59) begin 
+                seconds <= 0; 
+                minutes <= minutes + 1; 
+                if (minutes == 59) begin 
+                    minutes <= 0; 
+                    hours <= hours + 1; 
+                    if (hours == 23) begin 
+                        hours <= 0; 
+                    end 
+                end 
+            end 
+        end 
+    end 
+ 
+    // Timer Logic (Countdown from 60) 
+    always @(posedge clk or posedge reset) begin 
+        if (reset) begin 
+            timer_active <= 0; 
+            timer_counter <= 0; 
+            timer_duration <= 1; 
+         
+    extend_count <= 0; 
+            beep <= 0; 
+        end else begin 
+            if (start_timer) begin 
+                timer_active <= 1; 
+                timer_duration <= timer_select ? 2 : 1; 
+                timer_counter <= 60; // Initialize countdown timer to 60 seconds 
+            end 
+ 
+            if (extend_timer && timer_active && extend_count < 255) begin 
+                extend_count <= extend_count + 1; 
+                timer_counter <= timer_counter + timer_duration; // Extend timer 
+            end 
+ 
+            if (timer_active) begin 
+                if (timer_counter > 0) begin 
+                    timer_counter <= timer_counter - 1; 
+ 
+                    // Beep logic: Activate in the last 5 seconds 
+                    if (timer_counter <= 5) begin 
+                        beep <= 1; 
+                    end else begin 
+                        beep <= 0; 
+                    end 
+                end else begin 
+                    timer_active <= 0; // Timer stops when counter reaches 0 
+                    beep <= 0; 
+                end 
+        
+     end 
+        end 
+    end 
+endmodule   
